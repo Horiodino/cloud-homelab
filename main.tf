@@ -98,3 +98,65 @@ resource "azurerm_lb_probe" "health-check-probe" {
     protocol = "TCP"
 }
 
+
+// load balancer rule :: it is used to distribute the traffic across the vms simply a load balancer rule is used to distribute the traffic across the vms
+resource "azurerm_lb_rule" "load-balancer-rule" {
+    name = "kube-cluster-lb-rule"
+    resource_group_name = azurerm_resource_group.name.name
+    loadbalancer_id = azurerm_lb.name.id
+    backend_address_pool_id = azurerm_lb_backend_address_pool.name.id
+    backend_port = 80
+    frontend_ip_configuration_id = azurerm_lb.name.frontend_ip_configuration[0].id
+    frontend_port = 80
+    protocol = "TCP"
+    probe_id = azurerm_lb_probe.name.id
+}
+
+
+
+// in simple words it is used to distribute the vms across the different hardware like if one hardware is down then it will not affect the other hardware
+resource "azurerm_availability_set" "availability-set" {
+    name = "kube-cluster-availability-set"
+    location = azurerm_resource_group.name.location
+    resource_group_name = azurerm_resource_group.name.name
+}
+
+
+resource "azurerm_virtual_machine" "virtual-machine" {
+    name = "kube-cluster-vm"
+    location = azurerm_resource_group.name.location
+    resource_group_name = azurerm_resource_group.name.name
+    network_interface_ids = [azurerm_network_interface.name.id]
+    vm_size = "Standard_B2s"
+    availability_set_id = azurerm_availability_set.name.id
+
+    // delete os disk and data disk on termination when you delete the vm then it will delete the os disk and data disk also
+    delete_os_disk_on_termination = true
+    delete_data_disks_on_termination = true
+    storage_image_reference {
+        publisher = "Canonical"
+        offer = "UbuntuServer"
+        sku = "16.04-LTS"
+        version = "latest"
+    }
+    storage_os_disk {
+        name = "kube-cluster-os-disk"
+        caching = "ReadWrite"
+        create_option = "FromImage"
+        managed_disk_type = "Standard_LRS"
+    }
+    os_profile {
+        computer_name = "kube-cluster-vm"
+    }
+    os_profile_linux_config {
+        disable_password_authentication = false
+    }
+    tags = {
+        environment = "dev"
+    }
+}
+
+
+
+
+// output
