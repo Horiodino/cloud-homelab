@@ -63,7 +63,38 @@ resource "azurerm_network_interface" "virtual-nic" {
 }
 
 
+resource "azurerm_public_ip" "public-ip" {
+    name = "kube-cluster-pip"
+    location = azurerm_resource_group.name.location
+    resource_group_name = azurerm_resource_group.name.name
+    allocation_method = "Dynamic"
+}
 
 
 
-// output
+resource "azurerm_lb" "load-balancer" {
+    name = "kube-cluster-lb"
+    location = azurerm_resource_group.name.location
+    resource_group_name = azurerm_resource_group.name.name
+    sku = "Standard"
+}
+
+// i dont know how to explain it  but here is the explanation from the web
+# By configuring backend address pools, you can define the set of resources that will receive the traffic load balanced by the Azure Load Balancer,
+#  allowing for efficient distribution and scaling of network traffic across your application infrastructure.
+resource "azurerm_lb_backend_address_pool" "backend-pool" {
+    name = "kube-cluster-lb-pool"
+    resource_group_name = azurerm_resource_group.name.name
+    loadbalancer_id = azurerm_lb.name.id
+}
+
+
+// it is used to check the health of the vms 
+resource "azurerm_lb_probe" "health-check-probe" {
+    name = "kube-cluster-lb-probe"
+    resource_group_name = azurerm_resource_group.name.name
+    loadbalancer_id = azurerm_lb.name.id
+    port = 80
+    protocol = "TCP"
+}
+
