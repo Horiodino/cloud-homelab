@@ -133,3 +133,73 @@ resource "azurerm_linux_virtual_machine" "vm" {
     storage_account_type = "Standard_LRS"
   }
 }
+
+
+// create 2nd vm 
+
+resource "azurerm_linux_virtual_machine" "vm2" {
+  name                = "kube-cluster-node-1"
+  location            = azurerm_resource_group.home-lab.location
+  resource_group_name = azurerm_resource_group.home-lab.name
+  size                = "Standard_B1s"
+  admin_username      = "azureuser"
+  disable_password_authentication = true
+
+  admin_ssh_key {
+    username   = "azureuser"
+    public_key = file("~/.ssh/id_rsa.pub")
+  }
+
+  network_interface_ids = [
+    azurerm_network_interface.nic.id
+  ]
+  availability_set_id = azurerm_availability_set.availability-set.id
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "18.04-LTS"
+    version   = "latest"
+  }
+
+  os_disk {
+    name              = "kube-cluster-os-disk"
+    caching           = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+}
+
+
+// 3rd vm
+
+resource "azurerm_linux_virtual_machine" "vm3" {
+  name                = "kube-cluster-node-2"
+  location            = azurerm_resource_group.home-lab.location
+  resource_group_name = azurerm_resource_group.home-lab.name
+  size                = "Standard_B1s"
+  admin_username      = "azureuser"
+  disable_password_authentication = true
+
+  admin_ssh_key {
+    username   = "azureuser"
+    public_key = file("~/.ssh/id_rsa.pub")
+  }
+
+  network_interface_ids = [
+    azurerm_network_interface.nic.id
+  ]
+  availability_set_id = azurerm_availability_set.availability-set.id
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "18.04-LTS"
+    version   = "latest"
+  }
+
+  os_disk {
+    name              = "kube-cluster-os-disk"
+    caching           = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+}
