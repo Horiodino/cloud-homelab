@@ -77,10 +77,11 @@ echo "All Control Plane Instances created successfully"
 
 # Create Worker Instances
 echo "Creating Worker Instances"
-for i in 0 1 ; do
+for i in 0 1 2; do
   instance_id=$(aws ec2 run-instances --associate-public-ip-address --image-id ${IMAGE_ID} --count 1 --key-name kubernetes --security-group-ids ${SECURITY_GROUP_ID} --instance-type t2.micro --private-ip-address 10.0.1.2${i} --user-data "name=worker-${i}|pod-cidr=10.200.${i}.0/24" --subnet-id ${SUBNET_ID} --block-device-mappings='[{"DeviceName":"/dev/sda1","Ebs":{"VolumeSize":20}}]' --output text --query 'Instances[].InstanceId')
   aws ec2 modify-instance-attribute --instance-id ${instance_id} --no-source-dest-check
   aws ec2 create-tags --resources ${instance_id} --tags "Key=Name,Value=worker-${i}"
   echo "worker-${i} created"
 done
 echo "All Worker Instances created successfully"
+
