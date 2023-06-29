@@ -287,6 +287,11 @@ for instance in worker-0 worker-1 ; do
 
   scp -i kubernetes.id_rsa ca.pem ${instance}-key.pem ${instance}.pem ubuntu@${external_ip}:~/
 done
+# the for loop for the worker nodes what it is doing ?
+# first it is getting the external ip of the worker nodes and saving it in variable external_ip
+# then it is copying the ca.pem , worker-0-key.pem , worker-0.pem , worker-1-key.pem , worker-1.pem to the worker nodes
+# the same thing is done for the master nodes
+# the scp command is used to copy the files from the local machine to the remote machine using ssh protocol
 
 
 for instance in controller-0 controller-1 controller-2; do
