@@ -57,3 +57,93 @@ aws ec2 authorize-security-group-ingress --group-id ${SECURITY_GROUP_ID} --proto
 # a firewall is used to control the traffic that is allowed to enter or leave the subnet
 # the cidr block is the ip range of the traffic that will be allowed to enter or leave the subnet
 
+# Create Load Balancer
+  LOAD_BALANCER_ARN=$(aws elbv2 create-load-balancer \
+    --name kubernetes \
+    --subnets ${SUBNET_ID} \
+    --scheme internet-facing \
+    --type network \
+    --output text --query 'LoadBalancers[].LoadBalancerArn')
+  TARGET_GROUP_ARN=$(aws elbv2 create-target-group \
+    --name kubernetes \
+    --protocol TCP \
+    --port 6443 \
+    --vpc-id ${VPC_ID} \
+    --target-type ip \
+    --output text --query 'TargetGroups[].TargetGroupArn')
+  aws elbv2 register-targets --target-group-arn ${TARGET_GROUP_ARN} --targets Id=10.0.1.1{0,1,2}
+  aws elbv2 create-listener \
+    --load-balancer-arn ${LOAD_BALANCER_ARN} \
+    --protocol TCP \
+    --port 443 \
+    --default-actions Type=forward,TargetGroupArn=${TARGET_GROUP_ARN} \
+    --output text --query 'Listeners[].ListenerArn'
+
+
+# Create Public IP
+KUBERNETES_PUBLIC_ADDRESS=$(aws elbv2 describe-load-balancers \
+  --load-balancer-arns ${LOAD_BALANCER_ARN} \
+  --output text --query 'LoadBalancers[].DNSName')
+
+# the above script will create a load balancer and a target group and register the instances to the target group
+
+
+# Create Kubernetes Instances
+# Instance image
+
+IMAGE_ID=$(aws ec2 describe-images --owners 099720109477 \
+  --output json \
+  --filters \
+  'Name=root-device-type,Values=ebs' \
+  'Name=architecture,Values=x86_64' \
+  'Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*' \
+  | jq -r '.Images|sort_by(.Name)[-1]|.ImageId')
+
+# the above script will get the latest ubuntu image for the instances
+
+# SSH Key Pair 
+aws ec2 create-key-pair --key-name kubernetes --output text --query 'KeyMaterial' > kubernetes.id_rsa
+chmod 600 kubernetes.id_rsa
+
+# the above script will create a ssh key pair for the instances
+# ssh key pair is used to connect to the instances using ssh
+# so we can run the commands on the instances
+
+
+#  Create Instances 
+
+#  we will be using the t2.micro instances for the kubernetes cluster as its free tier eligible
+
+# Controle Plane Instances
+
+for i in 0 1 2; do
+  instance_id=$(aws ec2 run-instances \
+   --associate-public-ip-address \
+    --image-id ${IMAGE_ID} \
+    --count 1 \
+    --key-name kubernetes \
+    --security-group-ids ${SECURITY_GROUP_ID} \
+    --instance-type t2.micro \
+     --private-ip-address 10.0.1.1${i} \
+    --user-data "name=controller-${i}" \
+    --subnet-id ${SUBNET_ID} \
+    --block-device-mappings='[
+      {
+        "DeviceName": "/dev/sda1",
+        "Ebs": {
+          "VolumeSize": 20
+        }
+      }
+    ]' \
+
+     --output text --query 'Instances[].InstanceId')
+     aws ec2 modify-instance-attribute --instance-id ${instance_id} --no-source-dest-check
+  aws ec2 create-tags --resources ${instance_id} --tags "Key=Name,Value=controller-${i}"
+  echo "controller-${i} created "
+done
+
+# this for loop is used to create the instances
+# the --user-data "name=controller-${i}" is used to set the hostname of the instance
+# the --block-device-mappings is used to set the size of the root volume of the instance to 20GB
+# the root volume is the volume where the operating system is installed like your hard disk in your computer
+# we set the size of the root volume to 20GB as the default size is 8GB and we need more space for the kubernetes cluster
