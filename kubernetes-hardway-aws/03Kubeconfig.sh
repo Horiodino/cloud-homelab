@@ -1,5 +1,5 @@
 # Kubernetes Public DNS Address
-
+#  this DNS name will be used by external clients to reach the Kubernetes API Servers.
 
 KUBERNETES_PUBLIC_ADDRESS=$(aws elbv2 describe-load-balancers \
   --load-balancer-arns ${LOAD_BALANCER_ARN} \
@@ -7,7 +7,8 @@ KUBERNETES_PUBLIC_ADDRESS=$(aws elbv2 describe-load-balancers \
 
 
 
-# kubelet Kubernetes Configuration File
+# kubelet Kubernetes Configuration File 
+
 for instance in worker-0 worker-1 worker-2; do
   kubectl config set-cluster kubernetes-the-hard-way \
     --certificate-authority=ca.pem \
@@ -32,6 +33,8 @@ done
 
 
 # kube-proxy Kubernetes Configuration File
+#  the kube-proxy kubeconfig file will authenticate to the Kubernetes API server as the kube-proxy user.
+#  so that it can create required network routes and iptables rules.
 kubectl config set-cluster kubernetes-the-hard-way \
   --certificate-authority=ca.pem \
   --embed-certs=true \
@@ -52,7 +55,7 @@ kubectl config set-context default \
 kubectl config use-context default --kubeconfig=kube-proxy.kubeconfig
 
 
-#  kube-controller-manager Kubernetes Configuration File
+#  kube-controller-manager Kubernetes Configuration File: it will make use of the certificate authority certificate, client certificate, and client key to authenticate to the Kubernetes API server, and the encryption key to encrypt secrets.
 kubectl config set-cluster kubernetes-the-hard-way \
   --certificate-authority=ca.pem \
   --embed-certs=true \
@@ -96,6 +99,7 @@ kubectl config use-context default --kubeconfig=kube-scheduler.kubeconfig
 
 
 # admin Kubernetes Configuration File
+#  the main role of this kubeconfig file is to provide kubectl access to the kube-apiserver for administrative tasks.
 kubectl config set-cluster kubernetes-the-hard-way \
   --certificate-authority=ca.pem \
   --embed-certs=true \
@@ -117,7 +121,7 @@ kubectl config use-context default --kubeconfig=admin.kubeconfig
 
 
 
-
+# This for loop copies the appropriate kubelet and kube-proxy kubeconfig files to each worker instance:
 for instance in worker-0 worker-1 worker-2; do
   external_ip=$(aws ec2 describe-instances --filters \
     "Name=tag:Name,Values=${instance}" \
