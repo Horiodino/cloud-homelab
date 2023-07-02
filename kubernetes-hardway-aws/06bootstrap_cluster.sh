@@ -11,6 +11,8 @@ for instance in controller-0 controller-1 controller-2; do
   sleep 10
   ssh -i kubernetes.id_rsa ubuntu@$external_ip sudo ./autobootstrapcluster.sh
 
+  sleep 10
+
 done
 
 
@@ -19,11 +21,11 @@ external_ip=$(aws ec2 describe-instances --filters \
     "Name=instance-state-name,Values=running" \
     --output text --query 'Reservations[].Instances[].PublicIpAddress')
 
-ssh -i kubernetes.id_rsa ubuntu@${external_ip}
+# ssh into the first controller and run the following commands
 
-Create the system:kube-apiserver-to-kubelet ClusterRole with permissions to access the Kubelet API and perform most common tasks associated with managing pods:
+# Create the system:kube-apiserver-to-kubelet ClusterRole with permissions to access the Kubelet API and perform most common tasks associated with managing pods:
 
-cat <<EOF | kubectl apply --kubeconfig admin.kubeconfig -f -
+ssh -i kubernetes.id_rsa ubuntu@${external_ip} cat <<EOF | kubectl apply --kubeconfig admin.kubeconfig -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -45,10 +47,11 @@ rules:
       - "*"
 EOF
 
-# The Kubernetes API Server authenticates to the Kubelet as the kubernetes user using the client certificate as defined by the --kubelet-client-certificate flag.
-# Bind the system:kube-apiserver-to-kubelet ClusterRole to the kubernetes user:
+# then apply another file
 
-cat <<EOF | kubectl apply --kubeconfig admin.kubeconfig -f -
+sleep 10
+
+ssh -i kubernetes.id_rsa ubuntu@${external_ip} cat <<EOF | kubectl apply --kubeconfig admin.kubeconfig -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -62,7 +65,7 @@ subjects:
   - apiGroup: rbac.authorization.k8s.io
     kind: User
     name: kubernetes
-EOF
+EOF   | exit 
 
 # Verification of cluster public endpoint
 # The compute instances created in this tutorial will not have permission to complete this section. Run the following commands from the same machine used to create the compute instances.
@@ -75,5 +78,3 @@ KUBERNETES_PUBLIC_ADDRESS=$(aws elbv2 describe-load-balancers \
 # Make a HTTP request for the Kubernetes version info:
 
 curl --cacert ca.pem https://${KUBERNETES_PUBLIC_ADDRESS}/version
-
-    output

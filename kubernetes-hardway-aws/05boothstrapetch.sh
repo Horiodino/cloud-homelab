@@ -13,6 +13,8 @@ for instance in controller-0 controller-1 controller-2; do
 
   sleep 10
   ssh -i kubernetes.id_rsa ubuntu@$external_ip sudo ./bootstrap-etcd.sh
+  # exit after the shh session
+  sleep 10
 
 done
 
